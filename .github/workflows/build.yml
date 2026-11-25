@@ -19,15 +19,28 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x NeonFloorAndroid/gradlew
-
-      - name: Build Debug APK
-        working-directory: NeonFloorAndroid
-        run: ./gradlew assembleDebug --parallel
+      - name: Locate Android project and build APK
+        run: |
+          if [ -d "NeonFloorAndroid" ]; then
+            DIR="NeonFloorAndroid"
+          elif [ -f "gradlew" ] || [ -f "build.gradle" ]; then
+            DIR="."
+          else
+            echo "Android project files not found in repository root"
+            ls -la
+            exit 1
+          fi
+          if [ -f "$DIR/gradlew" ]; then
+            chmod +x "$DIR/gradlew"
+            (cd "$DIR" && ./gradlew assembleDebug --parallel)
+          else
+            gradle assembleDebug --parallel
+          fi
+          mkdir -p apk-out
+          find . -name "app-debug.apk" -exec cp {} apk-out/app-debug.apk \;
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: NeonFloorAndroid/app/build/outputs/apk/debug/app-debug.apk
+          path: apk-out/app-debug.apk
